@@ -6,10 +6,6 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Welcome to the Home Screen!</Text>
-      <Button
-        title="Go to Card Screen"
-        onPress={() => navigation.navigate('Cards')}
-      />
     </View>
   );
 }
