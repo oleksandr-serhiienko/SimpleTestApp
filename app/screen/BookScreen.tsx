@@ -1,11 +1,11 @@
-// app/screens/CardScreen.tsx
+// app/screens/BookScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function CardScreen() {
+export default function BookScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>This is the Card Screen!</Text>
+      <Text style={styles.text}>This is the Book Screen!</Text>
     </View>
   );
 }
