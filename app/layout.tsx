@@ -1,15 +1,18 @@
-// app/_layout.js
 import * as React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from './screen/HomeScreen';
 import CardScreen from './screen/CardScreen';
-import { Ionicons, AntDesign } from '@expo/vector-icons';
+import { AntDesign } from '@expo/vector-icons';
+import { RouteProp, ParamListBase } from '@react-navigation/native';
+import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function HomeStack(){
+type AntDesignIconName = 'home' | 'folderopen' | 'questioncircle';
+
+function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name='HomeScreen' component={HomeScreen}/>
@@ -17,8 +20,7 @@ function HomeStack(){
   );
 }
 
-function CardStack()
-{
+function CardStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name='CardsScreen' component={CardScreen}/>
@@ -29,11 +31,11 @@ function CardStack()
 export default function Layout() {
   return (
     <Tab.Navigator
-      screenOptions={({route}) => ({
-        tabBarIcon: ({focused, color, size}) => {
-          let iconName;
-          if(route.name === 'Home'){
-            iconName =  'home'
+      screenOptions={({ route }: { route: RouteProp<ParamListBase, string> }): BottomTabNavigationOptions => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: AntDesignIconName = 'questioncircle';
+          if (route.name === 'Home') {
+            iconName = 'home';
           } else if (route.name === 'Cards') {
             iconName = 'folderopen';
           }
@@ -41,9 +43,8 @@ export default function Layout() {
         },
       })}
     >
-      <Tab.Screen name='Home' component={HomeStack}  />
-      <Tab.Screen name='Cards' component={CardStack}  />
-      
+      <Tab.Screen name='Home' component={HomeStack} />
+      <Tab.Screen name='Cards' component={CardStack} />
     </Tab.Navigator>
   );
 }
