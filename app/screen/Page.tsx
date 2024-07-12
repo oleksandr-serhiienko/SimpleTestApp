@@ -5,7 +5,7 @@ import * as FileSystem from 'expo-file-system';
 export default function PageScreen() {
   const [fileName, setFileName] = useState<string>('');
   const [words, setWords] = useState<string[]>([]);
-  const [highlightedWords, setHighlightedWords] = useState<Set<number>>(new Set());
+  const [highlightedWords, setHighlightedWords] = useState<number | null>(null);
   const [highlightedSentence, setHighlightedSentence] = useState<number | null>(null);
 
   useEffect(() => {
@@ -32,15 +32,7 @@ export default function PageScreen() {
   }, []);
 
   const handleWordPress = (index: number) => {
-    setHighlightedWords(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
+    setHighlightedWords(index);
   };
 
   const handleWordDoubleTap = (index: number) => {
@@ -72,7 +64,7 @@ export default function PageScreen() {
               <Text
                 style={[
                   styles.word,
-                  highlightedWords.has(index) && styles.highlightedWord,
+                  highlightedWords === index && styles.highlightedWord,
                   highlightedSentence !== null &&
                     index >= highlightedSentence &&
                     !words.slice(highlightedSentence, index).some(w => w.match(/[.!?]$/)) &&
