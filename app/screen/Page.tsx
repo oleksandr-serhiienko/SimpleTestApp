@@ -12,9 +12,10 @@ export default function PageScreen() {
   const [content, setContent] = useState<string>('');
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [selectedSentence, setSelectedSentence] = useState<string | null>(null);
-  const [startIndex, setStartIndex] = useState<number | null>(null);
   const [selectedRange, setSelectedRange] = useState<SelectedRange>({ start: null, end: null });
+
+  const regex = /(\s+|[.,!?:;\n]+)/;
+  const regexEndOfSentence = /[.!?\n]/;
 
   useEffect(() => {
     const readFile = async () => {
@@ -36,17 +37,14 @@ export default function PageScreen() {
     readFile();
   }, []);
 
-  const cleanWord = (word: string) => word.replace(/^[^\w]+|[^\w]+$/g, '');
 
   const handleWordPress = (word: string, index: number) => {
-    const cleanedWord = cleanWord(word);
-    setSelectedWord(cleanedWord);
+    setSelectedWord(word);
     setSelectedIndex(index);
   };
 
   const handleSentencePress = (wordIndex: number) => {
-    const regex = /(\s+|[.,!?:;\n]+)/;
-    const sentenceDelimiterRegex = /[.!?\n]/;
+    
     const parts = content.split(regex);
     let currentIndex = 0;
     let sentenceStart = 0;
@@ -56,49 +54,39 @@ export default function PageScreen() {
       currentIndex += 1;
   
       if (currentIndex > wordIndex) {
-        if (sentenceDelimiterRegex.test(parts[i])) {
+        if (regexEndOfSentence.test(parts[i])) {
           sentenceEnd = currentIndex;
           break;
         }
       }
   
-      if (sentenceDelimiterRegex.test(parts[i])) {
+      if (regexEndOfSentence.test(parts[i])) {
         sentenceStart = currentIndex;
       }
     }
-  
-    console.log('wordIndex:', wordIndex);
-    console.log('sentenceStart:', sentenceStart);
-    console.log('sentenceEnd:', sentenceEnd);
 
-    console.log('wordIndex:', parts[wordIndex]);
-    console.log('sentenceStart:', parts[sentenceStart]);
-    console.log('sentenceEnd:', parts[sentenceEnd]);
-    console.log(parts.slice(sentenceStart, sentenceEnd))
-    console.log(content.slice(sentenceStart, sentenceEnd))
-
-    const selectedSentence = content.slice(sentenceStart, sentenceEnd).trim();
-    setSelectedSentence(selectedSentence);
-    setSelectedWord(null); 
-    // Clear word selection when a sentence is selected
-    setSelectedRange({ start: sentenceStart, end: sentenceEnd });
-
-    
+    while (parts[sentenceStart] === '' || regex.test(parts[sentenceStart])) {
+      sentenceStart += 1;
+    }
+ 
+    setSelectedRange({ start: sentenceStart, end: sentenceEnd});
+    setSelectedWord(null);     
   };
 
   const renderContent = () => {
     if (!content) return null;
-
-    const regex = /(\s+|[.,!?:;\n]+)/;
+  
+    const parts = content.split(regex);
     
-    return content.split(regex).map((segment, index) => {
-      // Check if the segment is whitespace or punctuation
-      if (regex.test(segment)) {
-        return <Text key={index}>{segment}</Text>; // Preserve and render whitespace and punctuation
-      }
+    return parts.map((segment, index) => {
 
-      const cleanedSegment = cleanWord(segment);
+      const isSelected = selectedRange.start !== null && 
+                         selectedRange.end !== null && 
+                         index >= selectedRange.start && 
+                         index <= selectedRange.end;
 
+      const hasPunctuation = regex.test(segment);
+  
       return (
         <TouchableWithoutFeedback
           key={index}
@@ -108,8 +96,8 @@ export default function PageScreen() {
           <Text
             style={[
               styles.word,
-              selectedWord === cleanedSegment && selectedIndex === index && styles.selectedWord,              
-              selectedRange.start !== null && selectedRange.end !== null && index >= selectedRange.start && index <= selectedRange.end && styles.selectedSentence,
+              selectedWord === segment && selectedIndex === index && !hasPunctuation && styles.selectedWord,              
+              isSelected && styles.selectedSentence,
             ]}
           >
             {segment}
