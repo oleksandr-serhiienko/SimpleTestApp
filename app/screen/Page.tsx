@@ -14,16 +14,15 @@ export default function PageScreen() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedRange, setSelectedRange] = useState<SelectedRange>({ start: null, end: null });
 
-  const regex = /(\s+|[.,!?:;\n]+)/;
+  const regex = /(\s+|[.,!?:;]|\n)/;
   const regexEndOfSentence = /[.!?\n]/;
 
   useEffect(() => {
     const readFile = async () => {
       try {
         const fileUri = FileSystem.documentDirectory + 'The Dune.txt';
-        const fileContent = await FileSystem.readAsStringAsync(fileUri);
+        let fileContent = await FileSystem.readAsStringAsync(fileUri);       
         setContent(fileContent);
-
         const fullName = fileUri.split('/').pop() || 'Unknown';
         const nameWithoutExtension = fullName.split('.').slice(0, -1).join('.');
         setFileName(nameWithoutExtension);
@@ -33,12 +32,16 @@ export default function PageScreen() {
         setFileName('Error');
       }
     };
-
+  
     readFile();
   }, []);
 
 
   const handleWordPress = (word: string, index: number) => {
+    if (selectedRange.start !== null && selectedRange.end !== null) {
+      // If a sentence is selected, clear the selection
+      setSelectedRange({ start: null, end: null });
+    }
     setSelectedWord(word);
     setSelectedIndex(index);
   };
@@ -52,7 +55,7 @@ export default function PageScreen() {
   
     for (let i = 0; i < parts.length; i++) {
       currentIndex += 1;
-  
+
       if (currentIndex > wordIndex) {
         if (regexEndOfSentence.test(parts[i])) {
           sentenceEnd = currentIndex;
@@ -68,8 +71,12 @@ export default function PageScreen() {
     while (parts[sentenceStart] === '' || regex.test(parts[sentenceStart])) {
       sentenceStart += 1;
     }
- 
-    setSelectedRange({ start: sentenceStart, end: sentenceEnd});
+
+    while(parts[sentenceEnd-1].match(/[\n ]/)){
+      sentenceEnd -= 1
+    }
+
+    setSelectedRange({ start: sentenceStart, end: sentenceEnd - 1});
     setSelectedWord(null);     
   };
 
