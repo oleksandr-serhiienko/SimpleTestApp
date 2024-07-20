@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableWithoutFeedback } from 'react-native';
 import * as FileSystem from 'expo-file-system';
+import Reverso from '../services/reverso/reverso';
 
 interface SelectedRange {
   start: number | null;
@@ -13,7 +14,7 @@ export default function PageScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedRange, setSelectedRange] = useState<SelectedRange>({ start: null, end: null });
-
+  const reverso = new Reverso();
   const regex = /(\s+|[.,!?:;]|\n)/;
   const regexEndOfSentence = /[.!?\n]/;
 
@@ -37,17 +38,19 @@ export default function PageScreen() {
   }, []);
 
 
-  const handleWordPress = (word: string, index: number) => {
+  const handleWordPress = async (word: string, index: number) => {
     if (selectedRange.start !== null && selectedRange.end !== null) {
       // If a sentence is selected, clear the selection
       setSelectedRange({ start: null, end: null });
     }
+
+    console.log((await reverso.getContextFromWebPage(word)));
+    //console.log(await reverso.getTranslationFromThePage(word));
     setSelectedWord(word);
     setSelectedIndex(index);
   };
 
-  const handleSentencePress = (wordIndex: number) => {
-    
+  const handleSentencePress = async (wordIndex: number) => {
     const parts = content.split(regex);
     let currentIndex = 0;
     let sentenceStart = 0;
@@ -72,13 +75,24 @@ export default function PageScreen() {
       sentenceStart += 1;
     }
 
-    while(parts[sentenceEnd-1].match(/[\n ]/)){
-      sentenceEnd -= 1
+    while (parts[sentenceEnd - 1].match(/[\n ]/)) {
+      sentenceEnd -= 1;
     }
 
-    setSelectedRange({ start: sentenceStart, end: sentenceEnd - 1});
-    setSelectedWord(null);     
-  };
+    setSelectedRange({ start: sentenceStart, end: sentenceEnd - 1 });
+    
+    try {
+        const translation = await reverso.getTranslationFromThePage(parts.slice(sentenceStart, sentenceEnd).join(''));
+        const translationObj = JSON.parse(translation);
+        const translatedText = translationObj["translation"];
+        console.log(translatedText);
+    } catch (error) {
+        console.error('Error fetching translation:', error);
+    }
+    
+    setSelectedWord(null);
+};
+
 
   const renderContent = () => {
     if (!content) return null;
