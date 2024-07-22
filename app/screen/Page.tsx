@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableWithoutFeedback } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import Reverso from '../services/reverso/reverso';
+import SlidePanel from '../../components/SlidePanel';
 
 interface SelectedRange {
   start: number | null;
@@ -14,6 +15,10 @@ export default function PageScreen() {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedRange, setSelectedRange] = useState<SelectedRange>({ start: null, end: null });
+  const [translations, setTranslations] = useState<{[key: number]: {text: string, visible: boolean}}>({});
+  const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [panelContent, setPanelContent] = useState<string>('');
+  const [panelFullContent, setPanelFullContent] = useState<string>('');
   const reverso = new Reverso();
   const regex = /(\s+|[.,!?:;]|\n)/;
   const regexEndOfSentence = /[.!?\n]/;
@@ -37,17 +42,47 @@ export default function PageScreen() {
     readFile();
   }, []);
 
+  const toggleTranslationVisibility = (index: number) => {
+    setTranslations(prev => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        visible: !prev[index].visible
+      }
+    }));
+  };
 
   const handleWordPress = async (word: string, index: number) => {
-    if (selectedRange.start !== null && selectedRange.end !== null) {
-      // If a sentence is selected, clear the selection
-      setSelectedRange({ start: null, end: null });
-    }
-
-    console.log((await reverso.getContextFromWebPage(word)));
-    //console.log(await reverso.getTranslationFromThePage(word));
+    // Reset states for new word
+    setSelectedRange({ start: null, end: null });
     setSelectedWord(word);
     setSelectedIndex(index);
+    setIsPanelVisible(false); // Hide panel before fetching new translations
+    setPanelContent('');
+    setPanelFullContent('');
+  
+    try {
+      const translations = await reverso.getContextFromWebPage(word);
+      console.log(translations);
+      // Format each translation
+      const formattedTranslations = translations.map(t => 
+        `${t.word}${t.pos ? ` • ${t.pos}` : ''}`
+      );
+  
+      // Prepare content for the panel
+      const initialContent = formattedTranslations.slice(0, 5).join('\n');
+      const fullContent = formattedTranslations.join('\n');
+  
+      setPanelContent(initialContent);
+      setPanelFullContent(fullContent);
+      setIsPanelVisible(true);
+  
+    } catch (error) {
+      console.error('Error fetching translation:', error);
+      setPanelContent(`Error fetching translation for "${word}"`);
+      setPanelFullContent(`Error fetching translation for "${word}"`);
+      setIsPanelVisible(true);
+    }
   };
 
   const handleSentencePress = async (wordIndex: number) => {
@@ -85,7 +120,11 @@ export default function PageScreen() {
         const translation = await reverso.getTranslationFromThePage(parts.slice(sentenceStart, sentenceEnd).join(''));
         const translationObj = JSON.parse(translation);
         const translatedText = translationObj["translation"];
-        console.log(translatedText);
+        //console.log(translatedText);
+        setTranslations(prev => ({
+          ...prev, 
+          [sentenceEnd]: {text: translatedText, visible: true}
+        }));
     } catch (error) {
         console.error('Error fetching translation:', error);
     }
@@ -108,23 +147,39 @@ export default function PageScreen() {
 
       const hasPunctuation = regex.test(segment);
   
-      return (
+      const element = (
         <TouchableWithoutFeedback
-          key={index}
+          key={`segment-${index}`}
           onPress={() => handleWordPress(segment, index)}
           onLongPress={() => handleSentencePress(index)}
         >
           <Text
             style={[
               styles.word,
-              selectedWord === segment && selectedIndex === index && !hasPunctuation && styles.selectedWord,              
-              isSelected && styles.selectedSentence,
+              selectedWord === segment && selectedIndex === index && !hasPunctuation && styles.selectedWord,                  
             ]}
           >
             {segment}
           </Text>
         </TouchableWithoutFeedback>
       );
+  
+      // If there's a translation for this index, add it after the segment
+      if (translations[index] && translations[index].visible) {
+        return [
+          element,
+          <TouchableWithoutFeedback
+            key={`translation-touch-${index}`}
+            onLongPress={() => toggleTranslationVisibility(index)}
+          >
+            <Text key={`translation-${index}`} style={styles.translation}>
+              {translations[index].text}
+            </Text>
+          </TouchableWithoutFeedback>
+        ];
+      }
+  
+      return element;
     });
   };
 
@@ -134,6 +189,12 @@ export default function PageScreen() {
       <ScrollView style={styles.scrollView}>
         <Text style={styles.content}>{renderContent()}</Text>
       </ScrollView>
+      <SlidePanel 
+        isVisible={isPanelVisible}
+        initialContent={panelContent}
+        fullContent={panelFullContent}
+        onClose={() => setIsPanelVisible(false)}
+      />
     </View>
   );
 }
@@ -164,7 +225,10 @@ const styles = StyleSheet.create({
   selectedWord: {
     backgroundColor: 'yellow',
   },
-  selectedSentence: {
-    backgroundColor: 'lightblue',
+  translation: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: 'green',
+    marginBottom: 10,
   },
 });
