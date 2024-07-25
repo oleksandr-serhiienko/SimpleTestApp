@@ -75,7 +75,7 @@ export default function PageScreen() {
   
       setPanelContent(initialContent);
       setPanelFullContent(fullContent);
-      setIsPanelVisible(true);
+      setIsPanelVisible(true);      
   
     } catch (error) {
       console.error('Error fetching translation:', error);
