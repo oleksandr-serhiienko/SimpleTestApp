@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableWithoutFeedback } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import Reverso from '../services/reverso/reverso';
+import Reverso, { ResponseTranslation } from '../services/reverso/reverso';
+import Translation from '../services/reverso/languages/entities/translation';
 import SlidePanel from '../../components/SlidePanel';
+import {Database} from '@/db/database';
+import {Card} from '@/db/database';
+import SupportedLanguages from '../services/reverso/languages/entities/languages';
+import TranslationContext from '../services/reverso/languages/entities/translationContext';
 
 interface SelectedRange {
   start: number | null;
@@ -19,9 +24,14 @@ export default function PageScreen() {
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [panelContent, setPanelContent] = useState<string>('');
   const [panelFullContent, setPanelFullContent] = useState<string>('');
+  const [currentTranslations, setCurrentTranslations] = useState<ResponseTranslation | null>(null);
   const reverso = new Reverso();
+  const database = new Database();
+  database.initialize();
   const regex = /(\s+|[.,!?:;]|\n)/;
   const regexEndOfSentence = /[.!?\n]/;
+  let translationsNew:ResponseTranslation;
+  let translationContext: TranslationContext;
 
   useEffect(() => {
     const readFile = async () => {
@@ -62,10 +72,11 @@ export default function PageScreen() {
     setPanelFullContent('');
   
     try {
-      const translations = await reverso.getContextFromWebPage(word);
-      console.log(translations);
+      const translationsNew = await reverso.getContextFromWebPage(word);
+      setCurrentTranslations(translationsNew);  // Store the translations in state
+      
       // Format each translation
-      const formattedTranslations = translations.map(t => 
+      const formattedTranslations = translationsNew.Translations.map(t => 
         `${t.word}${t.pos ? ` • ${t.pos}` : ''}`
       );
   
@@ -82,9 +93,38 @@ export default function PageScreen() {
       setPanelContent(`Error fetching translation for "${word}"`);
       setPanelFullContent(`Error fetching translation for "${word}"`);
       setIsPanelVisible(true);
+      setCurrentTranslations(null);  // Reset translations on error
     }
   };
 
+  const handleAddToDictionary = async () => {
+    if (!currentTranslations || !selectedWord) {
+      console.error("No translations available or no word selected");
+      return;
+    }
+
+
+    try {
+      let cards = await database.getAllCards();
+      console.log(cards);
+
+      let card: Card = {
+        level: 0,
+        sourceLanguage: SupportedLanguages.GERMAN,
+        targetLanguage: SupportedLanguages.ENGLISH,
+        source: fileName,
+        translations: currentTranslations.Translations.map(t => t.word),
+        userId: 'test',
+        word: selectedWord,
+        context: currentTranslations.Contexts.map(c => ({sentence: c.original, translation: c.translation})),
+        lastRepeat: new Date()
+      }
+      await database.insertCard(card);
+      console.log(`Adding "${selectedWord}" to dictionary`);
+    } catch (error) {
+      console.error("Error adding to dictionary:", error);
+    }
+  }
   const handleSentencePress = async (wordIndex: number) => {
     const parts = content.split(regex);
     let currentIndex = 0;
@@ -130,8 +170,7 @@ export default function PageScreen() {
     }
     
     setSelectedWord(null);
-};
-
+  };
 
   const renderContent = () => {
     if (!content) return null;
@@ -194,6 +233,7 @@ export default function PageScreen() {
         initialContent={panelContent}
         fullContent={panelFullContent}
         onClose={() => setIsPanelVisible(false)}
+        onAddToDictionary={handleAddToDictionary}
       />
     </View>
   );

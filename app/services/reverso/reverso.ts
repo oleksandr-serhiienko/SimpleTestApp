@@ -4,15 +4,12 @@ import { getRandom } from 'random-useragent';
 import { Parser } from 'htmlparser2';
 import * as domutils from 'domutils';
 import { DomHandler, Element } from 'domhandler';
+import Translation from './languages/entities/translation';
+import TranslationContext from './languages/entities/translationContext';
 
-interface TranslationContext {
-    original: string;
-    translation: string;
-  }
-
-interface Translation {
-  word: string;
-  pos: string;
+export interface ResponseTranslation{
+    Translations:Translation[],
+    Contexts:TranslationContext[]
 }
 
 export default class Reverso {
@@ -22,7 +19,7 @@ export default class Reverso {
     text: string,
     source: SupportedLanguage = SupportedLanguages.GERMAN,
     target: SupportedLanguage = SupportedLanguages.RUSSIAN
-  ): Promise<Translation[]> {
+  ): Promise<ResponseTranslation> {
     const url = `https://context.reverso.net/translation/${source}-${target}/${encodeURIComponent(text)}`;
     
 
@@ -41,8 +38,14 @@ export default class Reverso {
 
       const html = await response.text();
       const translations = await this.parseTranslations(html);
-      //const contexts = await this.parseContexts(html);
-      return translations;
+      const contexts = await this.parseContexts(html);
+
+      const transResponse: ResponseTranslation = {
+        Translations: translations,
+        Contexts: contexts
+      }
+    
+      return transResponse;
     } catch (error) {
       console.error('Error fetching or parsing translations:', error);
       throw error;
