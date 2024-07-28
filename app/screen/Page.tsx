@@ -27,30 +27,33 @@ export default function PageScreen() {
   const [currentTranslations, setCurrentTranslations] = useState<ResponseTranslation | null>(null);
   const reverso = new Reverso();
   const database = new Database();
-  database.initialize();
   const regex = /(\s+|[.,!?:;]|\n)/;
   const regexEndOfSentence = /[.!?\n]/;
   let translationsNew:ResponseTranslation;
   let translationContext: TranslationContext;
 
   useEffect(() => {
-    const readFile = async () => {
-      try {
-        const fileUri = FileSystem.documentDirectory + 'The Dune.txt';
-        let fileContent = await FileSystem.readAsStringAsync(fileUri);       
-        setContent(fileContent);
-        const fullName = fileUri.split('/').pop() || 'Unknown';
-        const nameWithoutExtension = fullName.split('.').slice(0, -1).join('.');
-        setFileName(nameWithoutExtension);
-      } catch (error) {
-        console.error('Error reading file:', error);
-        setContent('Error reading file');
-        setFileName('Error');
-      }
+    const initialize = async () => {
+      await database.initialize();
+      await readFile();
     };
-  
-    readFile();
+    initialize();
   }, []);
+  
+  const readFile = async () => {
+    try {
+      const fileUri = FileSystem.documentDirectory + 'The Dune.txt';
+      let fileContent = await FileSystem.readAsStringAsync(fileUri);       
+      setContent(fileContent);
+      const fullName = fileUri.split('/').pop() || 'Unknown';
+      const nameWithoutExtension = fullName.split('.').slice(0, -1).join('.');
+      setFileName(nameWithoutExtension);
+    } catch (error) {
+      console.error('Error reading file:', error);
+      setContent('Error reading file');
+      setFileName('Error');
+    }
+  };
 
   const toggleTranslationVisibility = (index: number) => {
     setTranslations(prev => ({
@@ -105,6 +108,7 @@ export default function PageScreen() {
 
 
     try {
+      
       let cards = await database.getAllCards();
       console.log(cards);
 
@@ -119,6 +123,8 @@ export default function PageScreen() {
         context: currentTranslations.Contexts.map(c => ({sentence: c.original, translation: c.translation})),
         lastRepeat: new Date()
       }
+      console.log(database.initialized)
+      //await database.initialize();
       await database.insertCard(card);
       console.log(`Adding "${selectedWord}" to dictionary`);
     } catch (error) {
