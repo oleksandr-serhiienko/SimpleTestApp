@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, PanResponder, Animated, Dimensions } from 'react-native';
-import { Card, Database } from '@/db/database';
+import { Card, Database, HistoryEntry } from '@/db/database';
 import wordGenerator, { getNextFibonacciLike } from '../services/other/nextWordToLearn';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -45,12 +45,31 @@ export default function CardScreen() {
       console.log('swipe right')
       item.level = getNextFibonacciLike(item.level);
       item.lastRepeat = new Date(Date.now());
+      let history: HistoryEntry = {
+        date: new Date(),
+        success: true,
+        cardId: item.id ??0,
+        contextId: null,
+        type: "card"
+      }
+      await database.updateHistory(history)
       await database.updateCard(item)
     }
     else
     {
       console.log('swipe left')
-      //TODO add logic for saving faile
+      item.level = 0;
+      item.lastRepeat = new Date(Date.now());
+      let history: HistoryEntry = {
+        date: new Date(),
+        success: false,
+        cardId: item.id ??0,
+        contextId: null,
+        type: "card"
+      }
+      await database.updateHistory(history)
+      await database.updateCard(item)
+      console.log(await database.getCardHistory(item.id ?? 0))
       setAllCards(prev => [...prev, item]);
     }
     setCurrentCardIndex(prevIndex => prevIndex + 1);

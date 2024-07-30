@@ -11,7 +11,16 @@ export interface Card {
   sourceLanguage: string;
   targetLanguage: string;
   context?: Array<{ sentence: string; translation: string, isBad: boolean }>;
-  history?: Array<{ date: Date; contextId: number; success: boolean }>;
+  history?: Array<{ date: Date; contextId?: number; success: boolean, cardId: number, number: string }>;
+}
+
+export interface HistoryEntry {
+  id?: number;
+  date: Date;
+  success: boolean;
+  cardId: number;
+  contextId: number | null;
+  type: string | null;
 }
 
 export class Database {
@@ -78,8 +87,18 @@ export class Database {
         isBad BOOL NOT NULL,
         FOREIGN KEY (cardId) REFERENCES cards(id)
       );
-    `);
-    
+
+      CREATE TABLE IF NOT EXISTS histories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        success TEXT NOT NULL,
+        cardId INTEGER NOT NULL,
+        contextId INTEGER NULL,
+        type TEXT NULL,
+        FOREIGN KEY (cardId) REFERENCES cards(id)
+        FOREIGN KEY (contextId) REFERENCES contexts(id)
+      );
+    `);   
   }
 
   async insertCard(card: Card): Promise<number> {
@@ -123,14 +142,11 @@ export class Database {
         throw error; 
       }
     }
-    
-
     return result.lastInsertRowId;
   }
 
   async getCardById(id: number): Promise<Card | null> {
     
-    //await this.SafeOperation();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     const card = await this.db.getFirstAsync<any>('SELECT * FROM cards WHERE id = ?', id);
@@ -145,7 +161,6 @@ export class Database {
 
   async getAllCards(): Promise<Card[]> {
 
-    await this.SafeOperation();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
   
     const query = `
@@ -160,7 +175,6 @@ export class Database {
   
     const results = await this.db.getAllAsync<any>(query);
   
-    // Group the results by card
     const cardMap = new Map<number, Card>();
   
     for (const row of results) {
@@ -195,42 +209,61 @@ export class Database {
 
   async updateCard(card: Card): Promise<void> {
 
-    console.log("Trying to update");
-    //await this.SafeOperation();
+    if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
+   
+    let result = await this.db.runAsync(
+      `UPDATE cards SET 
+        word = ?, translations = ?, lastRepeat = ?, level = ?, 
+        userId = ?, source = ?, sourceLanguage = ?, targetLanguage = ?
+       WHERE id = ?`,
+      [
+        card.word,
+        JSON.stringify(card.translations),
+        card.lastRepeat.toISOString(),
+        card.level,
+        card.userId,
+        card.source,
+        card.sourceLanguage,
+        card.targetLanguage,
+        card.id ?? 0
+      ]
+    );
+  }
+
+  async updateHistory(history: HistoryEntry): Promise<void> {
+    
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
-    try {
-      let result = await this.db.runAsync(
-        `UPDATE cards SET 
-          word = ?, translations = ?, lastRepeat = ?, level = ?, 
-          userId = ?, source = ?, sourceLanguage = ?, targetLanguage = ?
-         WHERE id = ?`,
-        [
-          card.word,
-          JSON.stringify(card.translations),
-          card.lastRepeat.toISOString(),
-          card.level,
-          card.userId,
-          card.source,
-          card.sourceLanguage,
-          card.targetLanguage,
-          card.id ?? 0
-        ]
-        
-      );
-      //console.log("card updated:", {card})
-      //console.log("result updated:", {result})
+    const result = await this.db.runAsync(
+      `INSERT INTO histories (date, success, cardId, contextId, type)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        history.date.toISOString(),
+        history.success,
+        history.cardId ,
+        history.contextId,
+        history.type
+      ]
+    );
+  }
 
+  async getCardHistory(cardId: number): Promise<HistoryEntry[]> {
+    if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
-    }
-    catch(error){
-      console.log(error)
-    }
+    const history = await this.db.getAllAsync<any>(
+      'SELECT * FROM histories WHERE cardId = ? ORDER BY date DESC',
+      [cardId]
+    );
+
+    return history.map(entry => ({
+      ...entry,
+      date: new Date(entry.date),
+      success: entry.success
+    }));
   }
 
   async deleteCard(id: number): Promise<void> {
 
-    //await this.SafeOperation();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     await this.db.runAsync('DELETE FROM cards WHERE id = ?', id);
