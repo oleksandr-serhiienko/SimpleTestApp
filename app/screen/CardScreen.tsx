@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, PanResponder, Animated, Dimensions } from 'react-native';
 import { Card, Database } from '@/db/database';
+import wordGenerator, { getNextFibonacciLike } from '../services/other/nextWordToLearn';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
@@ -35,12 +36,23 @@ export default function CardScreen() {
 
   const getAllCards = async () => {
     const cards = await database.getAllCards();
-    setAllCards(cards);
+    setAllCards(wordGenerator(cards));
   };
 
-  const onSwipeComplete = (direction: 'left' | 'right') => {
+  const onSwipeComplete = async (direction: 'left' | 'right') => {
     const item = allCards[currentCardIndex];
-    direction === 'right' ? console.log('Swiped right') : console.log('Swiped left');
+    if(direction === 'right'){
+      console.log('swipe right')
+      item.level = getNextFibonacciLike(item.level);
+      item.lastRepeat = new Date(Date.now());
+      await database.updateCard(item)
+    }
+    else
+    {
+      console.log('swipe left')
+      //TODO add logic for saving faile
+      setAllCards(prev => [...prev, item]);
+    }
     setCurrentCardIndex(prevIndex => prevIndex + 1);
     position.setValue({ x: 0, y: 0 });
   };
@@ -67,7 +79,13 @@ export default function CardScreen() {
       toValue: { x, y: 0 },
       duration: 250,
       useNativeDriver: false,
-    }).start(() => onSwipeComplete(direction));
+    }).start(async () => {
+      try {
+        await onSwipeComplete(direction);
+      } catch (error) {
+        console.error('Error in forceSwipe:', error);
+      }
+    });
   };
 
   const resetPosition = () => {

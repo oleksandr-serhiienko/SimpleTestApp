@@ -120,7 +120,7 @@ export default function PageScreen() {
         translations: currentTranslations.Translations.map(t => t.word),
         userId: 'test',
         word: selectedWord,
-        context: currentTranslations.Contexts.map(c => ({sentence: c.original, translation: c.translation})),
+        context: currentTranslations.Contexts.map(c => ({sentence: c.original, translation: c.translation, isBad: false})),
         lastRepeat: new Date()
       }
       console.log(database.initialized)

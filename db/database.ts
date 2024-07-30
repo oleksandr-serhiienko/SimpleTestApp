@@ -10,19 +10,40 @@ export interface Card {
   source: string;
   sourceLanguage: string;
   targetLanguage: string;
-  context?: Array<{ sentence: string; translation: string }>;
-  history?: Array<{ date: string; contextId: number; success: boolean }>;
+  context?: Array<{ sentence: string; translation: string, isBad: boolean }>;
+  history?: Array<{ date: Date; contextId: number; success: boolean }>;
 }
 
 export class Database {
   private db: SQLite.SQLiteDatabase | null = null;
   initialized:boolean = false;
+  private static instance: Database;
+
+  static getInstance(): Database {
+    if (!Database.instance) {
+      Database.instance = new Database();
+    }
+    return Database.instance;
+  }
 
   async initialize(): Promise<void> {
-    this.db = await SQLite.openDatabaseAsync('myAppDatabase.db');
-    await this.createTables()
-    this.initialized = true;
+    if (this.initialized) {
+      console.log("Database already initialized");
+      return;
+    }
+
+    try {
+      console.log("Initializing database");
+      this.db = await SQLite.openDatabaseAsync('myAppDatabase.db');
+      await this.createTables();
+      this.initialized = true;
+      console.log("Database initialized successfully");
+    } catch (error) {
+      console.error("Error initializing database:", error);
+      throw error;
+    }
   }
+
   
   async SafeOperation(): Promise<void>{
     if (!this.initialized)
@@ -54,6 +75,7 @@ export class Database {
         sentence TEXT NOT NULL,
         translation TEXT NOT NULL,
         cardId INTEGER NOT NULL,
+        isBad BOOL NOT NULL,
         FOREIGN KEY (cardId) REFERENCES cards(id)
       );
     `);
@@ -162,7 +184,8 @@ export class Database {
       if (row.contextId) {
         card.context!.push({
           sentence: row.sentence,
-          translation: row.translation
+          translation: row.translation,
+          isBad: false
         });
       }
     }
@@ -172,25 +195,37 @@ export class Database {
 
   async updateCard(card: Card): Promise<void> {
 
+    console.log("Trying to update");
     //await this.SafeOperation();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
-    await this.db.runAsync(
-      `UPDATE cards SET 
-        word = ?, translations = ?, lastRepeat = ?, level = ?, 
-        userId = ?, source = ?, sourceLanguage = ?, targetLanguage = ?
-       WHERE id = ?`,
-      [
-        card.word,
-        JSON.stringify(card.translations),
-        card.lastRepeat.toISOString(),
-        card.level,
-        card.userId,
-        card.source,
-        card.sourceLanguage,
-        card.targetLanguage
-      ]
-    );
+    try {
+      let result = await this.db.runAsync(
+        `UPDATE cards SET 
+          word = ?, translations = ?, lastRepeat = ?, level = ?, 
+          userId = ?, source = ?, sourceLanguage = ?, targetLanguage = ?
+         WHERE id = ?`,
+        [
+          card.word,
+          JSON.stringify(card.translations),
+          card.lastRepeat.toISOString(),
+          card.level,
+          card.userId,
+          card.source,
+          card.sourceLanguage,
+          card.targetLanguage,
+          card.id ?? 0
+        ]
+        
+      );
+      //console.log("card updated:", {card})
+      //console.log("result updated:", {result})
+
+
+    }
+    catch(error){
+      console.log(error)
+    }
   }
 
   async deleteCard(id: number): Promise<void> {

@@ -8,6 +8,8 @@ import { RouteProp, ParamListBase } from '@react-navigation/native';
 import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import BookScreen from './screen/BookScreen';
 import PageScreen from './screen/Page';
+import CardDesckScreen from './screen/CardDeckScreen';
+
 import { Tabs } from 'expo-router';
 
 const Stack = createStackNavigator();
@@ -27,6 +29,14 @@ function CardStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name='CardsScreen' component={CardScreen}/>
+    </Stack.Navigator>
+  );
+}
+
+function CardDeckStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name='CardsDeckScreen' component={CardDesckScreen}/>
     </Stack.Navigator>
   );
 }
@@ -66,10 +76,10 @@ export default function Layout() {
           }
           return <AntDesign name={iconName} size={size} color={focused ? color : 'gray'} />;
         },
-      })}
-    >
+      })}>
       <Tab.Screen name='Home' component={HomeStack} />
       <Tab.Screen name='Cards' component={CardStack} />
+      <Tab.Screen name='CardsDeck' component={CardDeckStack} />
       <Tab.Screen name='Books' component={BookStack}/>
       <Tab.Screen name='Page' component={PageStack}/>
     </Tab.Navigator>
