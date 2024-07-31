@@ -32,7 +32,7 @@ export default function CardScreen() {
       await getAllCards();
     };
     initialize();
-  }, []);
+  });
 
   const getAllCards = async () => {
     const cards = await database.getAllCards();
@@ -42,7 +42,6 @@ export default function CardScreen() {
   const onSwipeComplete = async (direction: 'left' | 'right') => {
     const item = allCards[currentCardIndex];
     if(direction === 'right'){
-      console.log('swipe right')
       item.level = getNextFibonacciLike(item.level);
       item.lastRepeat = new Date(Date.now());
       let history: HistoryEntry = {
@@ -57,7 +56,6 @@ export default function CardScreen() {
     }
     else
     {
-      console.log('swipe left')
       item.level = 0;
       item.lastRepeat = new Date(Date.now());
       let history: HistoryEntry = {
@@ -69,7 +67,6 @@ export default function CardScreen() {
       }
       await database.updateHistory(history)
       await database.updateCard(item)
-      console.log(await database.getCardHistory(item.id ?? 0))
       setAllCards(prev => [...prev, item]);
     }
     setCurrentCardIndex(prevIndex => prevIndex + 1);

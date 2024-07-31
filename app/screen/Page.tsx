@@ -66,7 +66,6 @@ export default function PageScreen() {
   };
 
   const handleWordPress = async (word: string, index: number) => {
-    // Reset states for new word
     setSelectedRange({ start: null, end: null });
     setSelectedWord(word);
     setSelectedIndex(index);
@@ -105,8 +104,7 @@ export default function PageScreen() {
       console.error("No translations available or no word selected");
       return;
     }
-
-
+  
     try {
       
       let cards = await database.getAllCards();
@@ -130,7 +128,8 @@ export default function PageScreen() {
     } catch (error) {
       console.error("Error adding to dictionary:", error);
     }
-  }
+  };
+  
   const handleSentencePress = async (wordIndex: number) => {
     const parts = content.split(regex);
     let currentIndex = 0;
@@ -166,7 +165,6 @@ export default function PageScreen() {
         const translation = await reverso.getTranslationFromThePage(parts.slice(sentenceStart, sentenceEnd).join(''));
         const translationObj = JSON.parse(translation);
         const translatedText = translationObj["translation"];
-        //console.log(translatedText);
         setTranslations(prev => ({
           ...prev, 
           [sentenceEnd]: {text: translatedText, visible: true}
