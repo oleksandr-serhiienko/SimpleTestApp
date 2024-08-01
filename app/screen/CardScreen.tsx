@@ -32,7 +32,7 @@ export default function CardScreen() {
       await getAllCards();
     };
     initialize();
-  });
+  },[]);
 
   const getAllCards = async () => {
     const cards = await database.getAllCards();

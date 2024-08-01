@@ -121,7 +121,6 @@ export default function PageScreen() {
         context: currentTranslations.Contexts.map(c => ({sentence: c.original, translation: c.translation, isBad: false})),
         lastRepeat: new Date()
       }
-      console.log(database.initialized)
       //await database.initialize();
       await database.insertCard(card);
       console.log(`Adding "${selectedWord}" to dictionary`);

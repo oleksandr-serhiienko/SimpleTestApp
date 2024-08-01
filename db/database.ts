@@ -25,19 +25,9 @@ export interface HistoryEntry {
 
 export class Database {
   private db: SQLite.SQLiteDatabase | null = null;
-  initialized:boolean = false;
-  private static instance: Database;
-
-  static getInstance(): Database {
-    if (!Database.instance) {
-      Database.instance = new Database();
-    }
-    return Database.instance;
-  }
 
   async initialize(): Promise<void> {
-    if (this.initialized) {
-      console.log("Database already initialized");
+    if (this.db != null) {
       return;
     }
 
@@ -45,7 +35,6 @@ export class Database {
       console.log("Initializing database");
       this.db = await SQLite.openDatabaseAsync('myAppDatabase.db');
       await this.createTables();
-      this.initialized = true;
       console.log("Database initialized successfully");
     } catch (error) {
       console.error("Error initializing database:", error);
@@ -53,17 +42,10 @@ export class Database {
     }
   }
 
-  
-  async SafeOperation(): Promise<void>{
-    if (!this.initialized)
-    {
-      await this.initialize();
-    }
-  }
 
   async createTables(): Promise<void> {
     
-    //await this.SafeOperation();
+    
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
     
     await this.db.execAsync(`
@@ -103,7 +85,7 @@ export class Database {
 
   async insertCard(card: Card): Promise<number> {
     
-    //await this.SafeOperation();
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
     
     const result = await this.db.runAsync(
@@ -142,16 +124,18 @@ export class Database {
         throw error; 
       }
     }
+    console.log("card added");
     return result.lastInsertRowId;
   }
 
   async getCardById(id: number): Promise<Card | null> {
-    
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     const card = await this.db.getFirstAsync<any>('SELECT * FROM cards WHERE id = ?', id);
     if (!card) return null;
 
+    console.log("card got");
     return {
       ...card,
       translations: JSON.parse(card.translations),
@@ -160,7 +144,7 @@ export class Database {
   }
 
   async getAllCards(): Promise<Card[]> {
-
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
   
     const query = `
@@ -203,12 +187,13 @@ export class Database {
         });
       }
     }
+    console.log("cards got");
   
     return Array.from(cardMap.values());
   }
 
   async updateCard(card: Card): Promise<void> {
-
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
    
     let result = await this.db.runAsync(
@@ -228,10 +213,12 @@ export class Database {
         card.id ?? 0
       ]
     );
-  }
+    console.log("card upated");
 
+  }
+  
   async updateHistory(history: HistoryEntry): Promise<void> {
-    
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     const result = await this.db.runAsync(
@@ -244,10 +231,12 @@ export class Database {
         history.contextId,
         history.type
       ]
-    );
+    )
+    console.log("history upated");
   }
 
   async getCardHistory(cardId: number): Promise<HistoryEntry[]> {
+    await this.initialize();
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     const history = await this.db.getAllAsync<any>(
@@ -255,6 +244,7 @@ export class Database {
       [cardId]
     );
 
+    console.log("card history got");
     return history.map(entry => ({
       ...entry,
       date: new Date(entry.date),
@@ -263,10 +253,12 @@ export class Database {
   }
 
   async deleteCard(id: number): Promise<void> {
+    await this.initialize();
 
     if (!this.db) throw new Error('Database not initialized. Call initialize() first.');
 
     await this.db.runAsync('DELETE FROM cards WHERE id = ?', id);
+    console.log("card deleted");
   }
 }
 
